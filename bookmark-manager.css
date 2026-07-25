@@ -1,0 +1,468 @@
+body{
+    font-family:sans-serif;
+    margin:20px;
+    overflow:hidden;
+}
+
+li{
+    margin:8px 0;
+}
+
+li.favorite::marker{
+    content: "☆";
+}
+
+h3{
+
+    margin:0 0 0px 0;
+    padding:0 20px 0 0;
+}
+
+.container{
+    display: flex;
+    height: calc(100vh - 50px);
+}
+
+#sidebar {
+    flex: 0 0 260px;
+    width: 260px;
+    box-sizing: border-box;
+    padding: 10px;
+    border-right: 1px solid #ccc;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+#tagList {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+#main {
+    flex: 1;
+    min-width: 0;
+    padding: 10px;
+    overflow-y: auto;
+}
+
+
+.title{
+    font-weight: bold;
+}
+
+.url:hover{
+    text-decoration: underline;
+
+}
+
+.category-button{
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+/* --------------------------------
+ * タグボタン共通
+ * 太字になっても横幅を変えない
+ * -------------------------------- */
+
+.tag-button,
+.bookmark-tag,
+.bookmark-heading-tag {
+    display: inline-grid;
+}
+
+.tag-button > .tag-label,
+.bookmark-tag > .tag-label,
+.bookmark-heading-tag > .tag-label,
+.tag-button::after,
+.bookmark-tag::after,
+.bookmark-heading-tag::after {
+    grid-area: 1 / 1;
+}
+
+.tag-button::after,
+.bookmark-tag::after,
+.bookmark-heading-tag::after {
+    content: attr(data-label);
+    font-weight: bold;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.tag-button.selected > .tag-label,
+.bookmark-tag.selected > .tag-label,
+.bookmark-heading-tag.selected > .tag-label {
+    font-weight: bold;
+}
+
+
+/* --------------------------------
+ * サイドバーのsubタグ
+ * -------------------------------- */
+
+.tag-button {
+    background: none;
+    border: none;
+    padding: 0 8px;
+    margin: 2px 0;
+    width: 100%;
+
+    color: #444;
+    cursor: pointer;
+    text-align: left;
+
+
+    font-family: inherit;
+    font-size: 13.3333px;
+    font-weight: normal;
+    line-height: normal;
+
+
+    justify-items: start;
+}
+
+.tag-button.selected {
+    color: #1565c0;
+    text-decoration: underline;
+}
+
+.bookmark-tags {
+    margin-left: 10px;  
+}
+
+
+/* --------------------------------
+ * ブックマークごとのタグ
+ * -------------------------------- */
+
+.bookmark-tag,
+.bookmark-heading-tag {
+    font-family: inherit;
+    font-size: 14px;
+}
+
+.bookmark-tag {
+    background: none;
+    border: none;
+    padding: 0;
+    margin-right: 2px;
+    width: auto;
+
+    /* margin-left: 100px; */
+
+    color: #6c6ca0;
+    cursor: pointer;
+    /* font: 14px; */
+}
+
+.bookmark-tag:hover {
+    text-decoration: underline;
+}
+
+.bookmark-tag.selected {
+    text-decoration: underline;
+}
+
+
+/* --------------------------------
+ * Bookmark見出し横のタグ
+ * -------------------------------- */
+
+.bookmark-heading-tag {
+    background: none;
+    border: none;
+    padding: 0;
+    width: auto;
+/* margin-right: 2px; */
+
+    color: #6c6ca0;
+    cursor: pointer;
+    /* font: inherit; */
+}
+
+.bookmark-heading-tag:hover {
+    text-decoration: underline;
+}
+
+.bookmark-heading-tag.selected {
+    color: #1565c0;
+    text-decoration: underline;
+}
+
+
+
+
+.bookmark-url{
+    margin-left: -2px;
+}
+
+
+
+
+
+.reset-button{
+    font-size: 20px;
+    background: none;
+    border: none;
+    font-weight: bold;
+    padding: 0;
+    margin-top: 20px;
+    margin-left: 30px;
+}
+
+.tag-group {
+  margin-top: 8px;
+}
+
+.main-tag-row,
+.sub-tag-row,
+.standalone-tag-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sub-tag-row {
+  padding-left: 16px;
+}
+
+
+
+
+.tag-sidebar-columns {
+    --sidebar-row-height: 26px;
+    --group-column-width: 86px;
+    --tree-branch-width: 18px;
+    --tree-line-width: 1px;
+
+    /*
+     * mainタグ側へ伸ばす線の長さ
+     */
+    --main-connector-length: 42px;
+
+    display: grid;
+    grid-template-columns:
+        var(--group-column-width)
+        minmax(0, 1fr);
+
+    column-gap: 0;
+    width: 100%;
+}
+
+.tag-group-button,
+.standalone-tag-row {
+    min-height: var(--sidebar-row-height);
+    box-sizing: border-box;
+}
+
+
+
+.tag-group-column {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.standalone-tag-row {
+    position: relative;
+
+    display: flex;
+    align-items: center;
+
+    width: 100%;
+    height: var(--sidebar-row-height);
+    min-height: var(--sidebar-row-height);
+    box-sizing: border-box;
+
+    padding-left: var(--tree-branch-width);
+}
+
+.tag-group-button {
+    position: relative;
+    z-index: 2;
+
+    display: flex;
+    align-items: center;
+
+    width: 100%;
+    height: var(--sidebar-row-height);
+    box-sizing: border-box;
+
+    border: none;
+    background: transparent;
+    padding: 0 2px;
+
+    text-align: left;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+
+
+
+.bookmark-heading-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.bookmark-heading-row h3 {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+#bookmarkGroupTags {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin-left: 145px;
+}
+
+
+
+
+
+
+.tag-column.sub-tag-tree
+.standalone-tag-row::before {
+    content: "";
+
+    position: absolute;
+    z-index: 1;
+
+    left: 0;
+    top: 50%;
+
+    width: var(--tree-branch-width);
+
+    border-top:
+        var(--tree-line-width)
+        solid currentColor;
+
+    pointer-events: none;
+}
+
+
+.tag-column {
+    position: relative;
+
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+
+    align-self: start;
+    height: fit-content;
+
+    margin-top: calc(
+        var(--tag-column-start-row, 0)
+        * var(--sidebar-row-height)
+    );
+}
+
+
+.tag-column.sub-tag-tree::before {
+    content: "";
+
+    position: absolute;
+    z-index: 1;
+
+    left: 0;
+    top: calc(var(--sidebar-row-height) / 2);
+
+    height: calc(
+        100% - var(--sidebar-row-height)
+    );
+
+    border-left:
+        var(--tree-line-width)
+        solid currentColor;
+
+    pointer-events: none;
+}
+
+
+.tag-column.sub-tag-tree .standalone-tag {
+    position: relative;
+    z-index: 2;
+}
+
+
+.tag-column.single-sub-tag::before {
+    display: none;
+}
+
+.tag-column.sub-tag-tree
+.standalone-tag-row.connected-to-main::before {
+    left: calc(
+        -1 * var(--main-connector-length)
+    );
+
+    width: calc(
+        var(--main-connector-length)
+        + var(--tree-branch-width)
+    );
+}
+
+
+.tag-group-label {
+    position: relative;
+    z-index: 3;
+    background: white;
+    padding-right: 6px;
+}
+
+.tag-group-button.selected .tag-group-label {
+    font-weight: bold;
+    text-decoration: underline;
+}
+
+
+.lower-bookmark-list {
+    margin: 6px 0 0 18px;
+    padding-left: 18px;
+    /* list-style: none; */
+    /* border-bottom:  1px solid #aaa; */
+}
+
+.lower-bookmark-list > li {
+    margin: 6px 0;
+}
+
+.lower-bookmark-list .title {
+    font-size: 0.95em;
+}
+
+.bookmark-title-button {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+
+    border: none;
+    background: none;
+    padding: 0;
+
+    font: inherit;
+    font-weight: bold;
+    color: inherit;
+
+    cursor: pointer;
+    text-align: left;
+}
+
+.bookmark-title-button:hover {
+    text-decoration: underline;
+}
+
+.bookmark-expand-mark {
+    width: 1em;
+    flex: 0 0 1em;
+
+    font-size: 10px;
+    text-align: center;
+}
