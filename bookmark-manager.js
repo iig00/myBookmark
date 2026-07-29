@@ -1,3 +1,4 @@
+
 const $ = {
   bookmark: document.getElementById("bookmarkList"),
   tagList: document.getElementById("tagList"),
@@ -30,6 +31,8 @@ let selectTags = [];
 let selectedTagGroup = "ALL";
 
 const expandedBookmarkKeys = new Set();
+
+const GROUP_NONE_TAG = "__group_none__";
 
 /*
  * BOOKMARKS_DATAをフラットな配列に変換
@@ -119,6 +122,14 @@ function initAlltag(bookmarks, tagGroups) {
       name: groupName,
       main: mainTags,
       sub: initializedSubTags,
+
+      /*
+      * TAG_GROUPでsubが明示されている場合だけ、
+      * グループ内noneを表示する。
+      *
+      * sub: [] の自動生成グループではfalse。
+      */
+      hasNoneTag: definedSubTags.length > 0,
     });
   }
 
@@ -229,14 +240,29 @@ function getSelectedGroup() {
 
 function isSelectedGroupSubTag(tag) {
   const selectedGroup = getSelectedGroup();
-  return selectedGroup ? selectedGroup.sub.includes(tag) : false;
+
+  if (!selectedGroup) {
+    return false;
+  }
+
+  return (
+    tag === GROUP_NONE_TAG ||
+    selectedGroup.sub.includes(tag)
+  );
 }
 
 function getSelectedSubTag() {
   const selectedGroup = getSelectedGroup();
-  if (!selectedGroup) return null;
 
-  return selectTags.find((tag) => selectedGroup.sub.includes(tag)) ?? null;
+  if (!selectedGroup) {
+    return null;
+  }
+
+  return selectTags.find(
+    (tag) =>
+      tag === GROUP_NONE_TAG ||
+      selectedGroup.sub.includes(tag)
+  ) ?? null;
 }
 
 function getLockedMainTags() {
@@ -245,21 +271,37 @@ function getLockedMainTags() {
 }
 
 /*
- * ブックマークが指定グループに所属するか
+ * ブックマークがグループのmainをすべて持つか
+ *
+ * lowerから継承されたtagsではなく、
+ * 元のタグであるgroupTagsを使用する。
  */
-function bookmarkMatchesTagGroup(bookmark, group) {
-  const hasAllMainTags = group.main.every(
+function bookmarkHasGroupMainTags(bookmark, group) {
+  return group.main.every(
     (mainTag) =>
       bookmark.groupTags.includes(mainTag)
   );
+}
 
-  if (!hasAllMainTags) {
-    return false;
-  }
-
+/*
+ * グループで定義されたsubのうち、
+ * どれか一つを持っているか
+ */
+function bookmarkHasAnyGroupSubTag(bookmark, group) {
   return group.sub.some(
     (subTag) =>
       bookmark.groupTags.includes(subTag)
+  );
+}
+
+
+/*
+ * ブックマークが指定グループに所属するか
+ */
+function bookmarkMatchesTagGroup(bookmark, group) {
+  return bookmarkHasGroupMainTags(
+    bookmark,
+    group
   );
 }
 
@@ -289,11 +331,32 @@ function isLockedMainTag(tagPath) {
 }
 
 function getVisibleTags(alltag) {
-  if (selectedTagGroup === "ALL") return alltag.all;
-  if (selectedTagGroup === "none") return alltag.none;
+  if (selectedTagGroup === "ALL") {
+    return alltag.all;
+  }
+
+  if (selectedTagGroup === "none") {
+    return alltag.none;
+  }
 
   const group = getSelectedGroup();
-  return group ? group.sub : [];
+
+  if (!group) {
+    return [];
+  }
+
+  /*
+   * TAG_GROUPでsubが明示されている場合だけ、
+   * 一番上にグループ内noneを追加する。
+   */
+  if (group.hasNoneTag) {
+    return [
+      GROUP_NONE_TAG,
+      ...group.sub,
+    ];
+  }
+
+  return group.sub;
 }
 
 // --------------------------------------------------
@@ -338,12 +401,17 @@ function getBookmarkGroupExtraTags(targetBookmarks) {
     return [];
   }
 
-  const selectedSubTag = getSelectedSubTag();
+  const selectedSubTag =
+    getSelectedSubTag();
 
   /*
-   * 選択中グループのmain・subは
-   * 見出し上部の追加タグから除外する
+   * mainグループを選択しただけでは、
+   * 上タグも表示しない。
    */
+  if (selectedSubTag === null) {
+    return [];
+  }
+
   const excludedTagSet = new Set([
     ...selectedGroup.main,
     ...selectedGroup.sub,
@@ -352,33 +420,46 @@ function getBookmarkGroupExtraTags(targetBookmarks) {
   const extraTagSet = new Set();
 
   for (const bookmark of targetBookmarks) {
-    /*
-     * グループ所属判定にはgroupTagsを使用する。
-     * lowerから追加されたタグは所属判定に使われない。
-     */
-    if (!bookmarkMatchesTagGroup(bookmark, selectedGroup)) {
-      continue;
-    }
-
-    /*
-     * subタグを選択している場合は、
-     * そのsubを持つブックマークだけを対象にする。
-     *
-     * ここは通常検索用tagsを見る。
-     */
     if (
-      selectedSubTag !== null &&
-      !bookmark.tags.includes(selectedSubTag)
+      !bookmarkHasGroupMainTags(
+        bookmark,
+        selectedGroup
+      )
     ) {
       continue;
     }
 
-    /*
-     * lowerから追加されたタグを含むtagsから
-     * 見出し上部の追加タグを収集する
-     */
+    if (selectedSubTag === GROUP_NONE_TAG) {
+      /*
+       * mainのみ一致し、
+       * 共通subには一致しないもの
+       */
+      if (
+        bookmarkHasAnyGroupSubTag(
+          bookmark,
+          selectedGroup
+        )
+      ) {
+        continue;
+      }
+    } else {
+      /*
+       * 通常subとの一致。
+       * groupTagsで判定する。
+       */
+      if (
+        !bookmark.groupTags.includes(
+          selectedSubTag
+        )
+      ) {
+        continue;
+      }
+    }
+
     for (const tag of bookmark.tags || []) {
-      if (!excludedTagSet.has(tag)) {
+      if (
+        !excludedTagSet.has(tag)
+      ) {
         extraTagSet.add(tag);
       }
     }
@@ -390,10 +471,96 @@ function getBookmarkGroupExtraTags(targetBookmarks) {
 }
 
 function bookmarkMatchesSelection(bookmark) {
-  if (!bookmarkMatchesGroup(bookmark)) return false;
-  return selectTags.every((tag) => bookmark.tags.includes(tag));
-}
+  /*
+   * ALLと全体none
+   */
+  if (
+    selectedTagGroup === "ALL" ||
+    selectedTagGroup === "none"
+  ) {
+    if (!bookmarkMatchesGroup(bookmark)) {
+      return false;
+    }
 
+    return selectTags.every(
+      (tag) => bookmark.tags.includes(tag)
+    );
+  }
+
+  const selectedGroup = getSelectedGroup();
+
+  if (!selectedGroup) {
+    return false;
+  }
+
+  /*
+   * mainタグを持たないものは除外
+   */
+  if (
+    !bookmarkHasGroupMainTags(
+      bookmark,
+      selectedGroup
+    )
+  ) {
+    return false;
+  }
+
+  const selectedSubTag = getSelectedSubTag();
+
+  /*
+   * mainタグだけを選択している場合。
+   *
+   * 定義されたsubのどれかに一致するものを表示し、
+   * none対象は表示しない。
+   */
+  if (selectedSubTag === null) {
+    return bookmarkHasAnyGroupSubTag(
+      bookmark,
+      selectedGroup
+    );
+  }
+
+  /*
+   * グループ内noneを選択した場合。
+   *
+   * mainには一致するが、
+   * どのsubにも一致しないものだけ表示。
+   */
+  if (selectedSubTag === GROUP_NONE_TAG) {
+    if (
+      bookmarkHasAnyGroupSubTag(
+        bookmark,
+        selectedGroup
+      )
+    ) {
+      return false;
+    }
+  } else {
+    /*
+     * 通常subを選択した場合
+     */
+    if (
+      !bookmark.groupTags.includes(
+        selectedSubTag
+      )
+    ) {
+      return false;
+    }
+  }
+
+  /*
+   * 上タグなど、追加で選択されたタグ
+   */
+  const additionalTags = selectTags.filter(
+    (tag) =>
+      tag !== selectedSubTag &&
+      tag !== GROUP_NONE_TAG
+  );
+
+  return additionalTags.every(
+    (tag) => bookmark.tags.includes(tag)
+  );
+}
 // --------------------------------------------------
 // UI レンダリング・要素作成
 // --------------------------------------------------
@@ -435,15 +602,19 @@ function createGroupButton(
   return button;
 }
 
-function createTagButton(tag, className) {
+function createTagButton(
+  tag,
+  className,
+  labelText = tag
+) {
   const tagPath = [tag];
   const tagButton = document.createElement("button");
 
   tagButton.className = className;
-  tagButton.dataset.label = tag;
+  tagButton.dataset.label = labelText;
 
   const label = document.createElement("span");
-  label.textContent = tag;
+  label.textContent = labelText;
   label.className = "tag-label";
 
   tagButton.appendChild(label);
@@ -454,11 +625,16 @@ function createTagButton(tag, className) {
 
   if (isLockedMainTag(tagPath)) {
     tagButton.classList.add("locked");
-    tagButton.setAttribute("aria-disabled", "true");
+    tagButton.setAttribute(
+      "aria-disabled",
+      "true"
+    );
   }
 
   tagButton.addEventListener("click", () => {
-    if (isLockedMainTag(tagPath)) return;
+    if (isLockedMainTag(tagPath)) {
+      return;
+    }
 
     selectBookmarkTag(tag);
   });
@@ -741,9 +917,18 @@ for (const [index, tag] of visibleTags.entries()) {
     tagRow.classList.add("connected-to-main");
   }
 
-  tagRow.appendChild(
-    createTagButton(tag, "tag-button standalone-tag")
-  );
+const labelText =
+  tag === GROUP_NONE_TAG
+    ? "none"
+    : tag;
+
+tagRow.appendChild(
+  createTagButton(
+    tag,
+    "tag-button standalone-tag",
+    labelText
+  )
+);
 
   tagFragment.appendChild(tagRow);
 }
