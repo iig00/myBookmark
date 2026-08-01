@@ -386,6 +386,18 @@ h3{
     pointer-events: none;
 }
 
+.tag-column.sub-tag-tree:has(.group-none-row)::before {
+    top: calc(
+        var(--sidebar-row-height)
+        + var(--sidebar-row-height) / 2
+    );
+
+    height: calc(
+        100%
+        - var(--sidebar-row-height) * 2
+    );
+}
+
 
 .tag-column.sub-tag-tree .standalone-tag {
     position: relative;

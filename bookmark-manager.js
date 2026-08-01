@@ -367,32 +367,53 @@ function selectBookmarkTag(tag) {
   if (isSelectedGroupSubTag(tag)) {
     const selectedGroup = getSelectedGroup();
 
+    if (!selectedGroup) {
+      return;
+    }
+
     if (selectTags.includes(tag)) {
-      // 解除
-      selectTags = selectTags.filter((selectedTag) => selectedTag !== tag);
-    } else {
-      // 同グループのsubを解除して今回選択したものを追加
+      /*
+       * 選択中のsubを解除
+       */
       selectTags = selectTags.filter(
-        (selectedTag) => !selectedGroup.sub.includes(selectedTag)
+        (selectedTag) => selectedTag !== tag
       );
+    } else {
+      /*
+       * 同じグループのsubとnoneをすべて解除してから、
+       * 今回選択したものだけを追加する。
+       */
+      selectTags = selectTags.filter(
+        (selectedTag) =>
+          selectedTag !== GROUP_NONE_TAG &&
+          !selectedGroup.sub.includes(selectedTag)
+      );
+
       selectTags.push(tag);
     }
   } else {
-    // sub以外（複数選択可）
+    /*
+     * グループのsub以外は複数選択可能
+     */
     if (selectTags.includes(tag)) {
-      selectTags = selectTags.filter((selectedTag) => selectedTag !== tag);
+      selectTags = selectTags.filter(
+        (selectedTag) => selectedTag !== tag
+      );
     } else {
       selectTags.push(tag);
     }
   }
 
   renderTagSidebar(alltag);
+
   renderBookmarks(
     bookmarks,
     bookmarkMap,
     expandedBookmarkKeys
   );
 }
+
+
 
 function getBookmarkGroupExtraTags(targetBookmarks) {
   const selectedGroup = getSelectedGroup();
@@ -854,14 +875,35 @@ function renderTagSidebar(alltag) {
     0
   );
 
-  /*
-   * subタグ数の上から1/3の位置。
-   * 割り切れない場合は切り上げる。
-   */
-  const targetTagIndex = Math.max(
-    Math.ceil(visibleTags.length / 3) - 1,
-    0
-  );
+const hasGroupNone =
+  visibleTags[0] === GROUP_NONE_TAG;
+
+/*
+ * noneを除いた、通常subタグの数
+ */
+const normalSubTagCount =
+  hasGroupNone
+    ? visibleTags.length - 1
+    : visibleTags.length;
+
+/*
+ * 通常subタグの上から1/3の位置。
+ *
+ * 配列indexへ変換するため-1。
+ */
+const normalTargetIndex = Math.max(
+  Math.ceil(normalSubTagCount / 3) - 1,
+  0
+);
+
+/*
+ * noneがある場合は、noneの1行分を加算する。
+ *
+ * これにより、mainタグと同じ高さになるのは
+ * 必ず通常subタグになり、noneはmainより上になる。
+ */
+const targetTagIndex =
+  normalTargetIndex + (hasGroupNone ? 1 : 0);
 
   
 
@@ -903,9 +945,13 @@ if (showSubTagTree) {
   /* 左側：タグ一覧 */
   const tagFragment = document.createDocumentFragment();
 
-for (const [index, tag] of visibleTags.entries()) {
-  const tagRow = document.createElement("div");
-  tagRow.className = "standalone-tag-row";
+  for (const [index, tag] of visibleTags.entries()) {
+    const tagRow = document.createElement("div");
+    tagRow.className = "standalone-tag-row";
+
+    if (tag === GROUP_NONE_TAG) {
+      tagRow.classList.add("group-none-row");
+    }
 
   /*
    * 選択中mainタグと同じ高さの行
